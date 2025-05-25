@@ -1,15 +1,9 @@
 import streamlit as st
 import matplotlib.pyplot as plt
-import seaborn as sns
 import pandas as pd
-from sklearn.linear_model import SGDRegressor
-from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import mean_squared_error
-from sklearn.model_selection import train_test_split
-from IPython.display import display
-import ipywidgets as widgets
-from scipy.stats import skew
 import plotly.express as px
+import requests
+import json
 st.set_page_config(page_title="E-commerce Churn Predictor", layout="wide")
 ecom_data = pd.read_excel("E Commerce Dataset.xlsx",sheet_name='E Comm')
 
@@ -96,12 +90,12 @@ fig4 = px.pie(churned, names="CityTier",
 fig4.update_layout(title="City Tier of Churned Users", width=600, height=600)
 
 # 5. Number of Orders (OrderCount)
-order_counts = churned['OrderCount'].value_counts().reset_index()
-order_counts.columns = ['OrderCount', 'Count']
+# order_counts = churned['OrderCount'].value_counts().reset_index()
+# order_counts.columns = ['OrderCount', 'Count']
 
-fig5 = px.pie(order_counts, names='OrderCount', values='Count', 
-              color_discrete_sequence=px.colors.sequential.Oranges)
-fig5.update_layout(title="Orders Placed by Churned Users", width=600, height=600)
+# fig5 = px.pie(order_counts, names='OrderCount', values='Count', 
+#               color_discrete_sequence=px.colors.sequential.Oranges)
+# fig5.update_layout(title="Orders Placed by Churned Users", width=600, height=600)
 
 #6. Satisfaction Score
 
@@ -116,32 +110,35 @@ col1, col2 = st.columns(2)
 col3, col4 = st.columns(2)
 col5, col6 = st.columns(2)
 
-with col3:
-    st.plotly_chart(fig1, use_container_width=True)
-    st.caption("🔹 36.7% of users who used mobile phone as preferred login device have churned followed by people using computer accounting for 34.2%")
+# with col3:
+st.plotly_chart(fig1, use_container_width=True)
+st.caption("🔹 36.7% of users who used mobile phone as preferred login device have churned followed by people using computer accounting for 34.2%")
     
-with col4:
-    st.plotly_chart(fig2, use_container_width=True) 
-    st.caption("🔹 Users Using Debit Card as Mode of Payment have the highest percentage of churn accounting for 36.7% followed by 20.7% using Credit Card that means people using cards for payment are more churn prone than people using other modes of payments")
+# with col4:
+#     st.plotly_chart(fig2, use_container_width=True) 
+    
    
 
-with col1:
-    st.plotly_chart(fig3, use_container_width=True)
-    st.caption("🔹 Users who have churned and are single accounted for 50.6% of users churned")
-with col2:
-    st.plotly_chart(fig4, use_container_width=True)
-    st.caption("🔹 Users belonging to Tier-1 city have the most churn rate accounting for 56.1% of all churned users followed by people belonging to Tier 3 cities (38.8%)")
+# with col1:
+#     st.plotly_chart(fig3, use_container_width=True)
+   
+# with col2:
+st.plotly_chart(fig4, use_container_width=True)
+st.caption("🔹 Users belonging to Tier-1 city have the most churn rate accounting for 56.1% of all churned users followed by people belonging to Tier 3 cities (38.8%)")
 
 
 
 # Full width below
-with col5:
-    st.plotly_chart(fig5, use_container_width=True)
-    st.caption("🔹 Users who placed one or two orders churned more ")
+# with col5:
+#     st.plotly_chart(fig5, use_container_width=True)
+#     
+# with col6:
+st.plotly_chart(fig6, use_container_width=True)
+st.caption("🔹 Users with staisfaction score 3 and above accounted for 78% users")
+st.caption("🔹 Users who placed one or two orders churned more ")
+st.caption("🔹 Users who have churned and are single accounted for 50.6% of users churned")
+st.caption("🔹 Users Using Debit Card as Mode of Payment have the highest percentage of churn accounting for 36.7% followed by 20.7% using Credit Card that means people using cards for payment are more churn prone than people using other modes of payments")
 
-with col6:
-    st.plotly_chart(fig6, use_container_width=True)
-    st.caption("🔹 Users with staisfaction score 3 and above accounted for 78% users")
 
 
 import streamlit as st
@@ -255,3 +252,73 @@ with st.expander("Show detailed classification report for XGBoost"):
             
             ROC AUC Score: 0.9836
     """)
+
+
+# Load the customer sets from JSON
+with open("sample_customers.json", "r") as f:
+    all_sets = json.load(f)
+
+# Define FastAPI prediction endpoint
+API_URL = "http://127.0.0.1:8000/predict"
+
+# Define feature order used by the model
+selected_features = [
+    'complain',
+    'number_of_device_registered',
+    'satisfaction_score',
+    'tenure',
+    'marital_status',
+    'prefered_order_cat_Laptop & Accessory',
+    'city_tier',
+    'day_since_last_order',
+    'warehouse_to_home',
+    'preferred_payment_mode_Credit Card',
+    'preferred_login_device_Computer',
+    'preferred_payment_mode_COD',
+    'prefered_order_cat_Mobile Phone',
+    'cashback_amount',
+    'prefered_order_cat_Others',
+    'number_of_address',
+    'preferred_payment_mode_E wallet',
+    'preferred_login_device_Phone',
+    'prefered_order_cat_Grocery',
+    'order_amount_hike_fromlast_year',
+    'preferred_login_device_Mobile Phone'
+]
+
+# UI
+st.title("🛍️ Ecommerce Churn Prediction Dashboard")
+set_name = st.selectbox("Select a customer set", list(all_sets.keys()))
+
+if st.button("Predict Churn for Selected Set"):
+    customers = all_sets[set_name]
+
+    for idx, customer in enumerate(customers):
+        input_data = [int(customer[feature]) if isinstance(customer[feature], bool) else customer[feature]
+                      for feature in selected_features]
+
+        try:
+            response = requests.post(API_URL, json={"features": input_data})
+            result = response.json()
+        except Exception as e:
+            st.error(f"Failed to reach API: {e}")
+            continue
+
+        st.subheader(f"Customer #{idx + 1}")
+        col1, col2 = st.columns(2)
+
+        with col1:
+            customer_data = {k: v for k, v in customer.items() if k != "churn"}
+            df = pd.DataFrame(customer_data.items(), columns=["Feature", "Value"])
+            st.table(df)
+
+        with col2:
+            actual = "Churn" if customer.get("churn") == 1 else "Not Churn"
+            predicted = result.get("predicted_class", "Error")
+            prob = result.get("churn_probability", "-")
+
+            st.markdown(f"**Actual:** {actual}")
+            st.markdown(f"**Predicted:** {predicted}")
+            # st.markdown(f"**Churn Probability:** `{prob}`")
+
+        st.markdown("---")
