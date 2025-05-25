@@ -148,6 +148,10 @@ xgb_model = XGBClassifier(
 
     ![Alt Text](images/roc_curve.png)
 
+- **Feature Determing Churn**
+    
+    ![Alt Text](images/features%20determining%20churn.png)
+
 ---
 
 ## 🚀 How to Run
