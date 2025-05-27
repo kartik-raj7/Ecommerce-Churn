@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import plotly.express as px
 import requests
+import plotly.graph_objects as go
 import json
 st.set_page_config(page_title="E-commerce Churn Predictor", layout="wide")
 ecom_data = pd.read_excel("E Commerce Dataset.xlsx",sheet_name='E Comm')
@@ -12,166 +13,143 @@ st.markdown("""Welcome to the **E-commerce Churn Predictor App**!
 This app helps predict whether a customer is likely to churn based on their online behavior and demographics.
 """)
 
-# st.markdown("""
-# ### 💡 What is Customer Churn?
-# Customer churn refers to when a customer stops using a company's product or service. Identifying customers at risk of churning can help businesses take proactive measures to retain them.
-
-# In this project, we use a machine learning model trained on e-commerce customer data to predict churn likelihood.
-
-# ### 🔍 What You'll Find in This App:
-# - Explore the data and key insights.
-# - Visualize patterns related to churn.
-# - Input customer information and get churn predictions.
-# """)
-# st.markdown("📊 Sample Data")
-# st.dataframe(ecom_data.head())
-
-# st.markdown("### 📈 Dataset Summary")
-# st.write("Number of rows:", ecom_data.shape[0])
-# st.write("Number of columns:", ecom_data.shape[1])
-# st.write("Churn rate in dataset:")
-# st.write(ecom_data['Churn'].value_counts(normalize=True).map("{:.2%}".format))
-
-# col1, col2 = st.columns(2)
-
-# with col1:
-#     # Bar chart for 'PreferedOrderCat' (note: double-check spelling, your data column name might be "PreferedOrderCat" or "PreferredOrderCat")
-#     order_cat_counts = ecom_data['PreferedOrderCat'].value_counts().reset_index()
-#     order_cat_counts.columns = ['OrderCategory', 'Count']
-
-#     fig4 = px.bar(order_cat_counts, 
-#                   x='OrderCategory', 
-#                   y='Count', 
-#                   color='Count',
-#                   color_continuous_scale='Oranges',
-#                   title="Popular Order Categories",
-#                   labels={'Count': 'Number of Orders', 'OrderCategory': 'Order Category'},
-#                   height=300, width=700)
-#     fig4.update_layout(showlegend=False, margin=dict(t=40, b=0, l=0, r=0))
-#     st.plotly_chart(fig4, use_container_width=True)
-#     st.caption("🔹 Laptops & Mobile Accessories are the most popular, while Grocery is the least.")
-
-# with col2:
-#     # Pie chart for 'PreferredPaymentMode'
-#     payment_mode_counts = ecom_data['PreferredPaymentMode'].value_counts().reset_index()
-#     payment_mode_counts.columns = ['PaymentMode', 'Count']
-
-#     fig2 = px.pie(payment_mode_counts, 
-#                   names='PaymentMode', 
-#                   values='Count', 
-#                   color_discrete_sequence=px.colors.sequential.Reds,
-#                   title="Payment Mode Preferences")
-#     fig2.update_traces(textposition='inside', textinfo='percent+label')
-#     fig2.update_layout(margin=dict(t=40, b=0, l=0, r=0), height=500, width=700)
-#     st.plotly_chart(fig2, use_container_width=True)
-
 #################################
-import pandas as pd
-import plotly.graph_objects as go
-import streamlit as st
 
-# Step 1: Data prep
-order_cat_counts = ecom_data['PreferedOrderCat'].value_counts().reset_index()
-order_cat_counts.columns = ['Category', 'Count']
-order_cat_counts['Type'] = 'Order Category'
+# Step 1: Prepare data for Order Categories (double bar chart)
+order_cat_churn = (
+    ecom_data
+    .groupby(['PreferedOrderCat', 'Churn'])
+    .size()
+    .reset_index(name='Count')
+)
 
-payment_mode_counts = ecom_data['PreferredPaymentMode'].value_counts().reset_index()
-payment_mode_counts.columns = ['Category', 'Count']
-payment_mode_counts['Type'] = 'Payment Mode'
+order_cat_churn['ChurnStatus'] = order_cat_churn['Churn'].map({0: 'Non-Churned', 1: 'Churned'})
 
-# Combine both
-combined_df = pd.concat([order_cat_counts, payment_mode_counts])
+# Step 2: Prepare data for Payment Modes (double line chart)
+payment_mode_churn = (
+    ecom_data
+    .groupby(['PreferredPaymentMode', 'Churn'])
+    .size()
+    .reset_index(name='Count')
+)
 
-# Step 2: Plot using Plotly
-fig = go.Figure()
+payment_mode_churn['ChurnStatus'] = payment_mode_churn['Churn'].map({0: 'Non-Churned', 1: 'Churned'})
 
-# Bar chart for Order Categories
-fig.add_trace(go.Bar(
-    x=order_cat_counts['Category'],
-    y=order_cat_counts['Count'],
-    name='Order Categories',
-    marker_color='orange',
-    yaxis='y1'
+# Step 3: Plot double bar chart for Order Categories
+fig_order = go.Figure()
+
+fig_order.add_trace(go.Bar(
+    x=order_cat_churn[order_cat_churn['Churn'] == 0]['PreferedOrderCat'],
+    y=order_cat_churn[order_cat_churn['Churn'] == 0]['Count'],
+    name='Non-Churned',
+    marker_color='orange'
 ))
 
-# Line chart for Payment Modes
-fig.add_trace(go.Scatter(
-    x=payment_mode_counts['Category'],
-    y=payment_mode_counts['Count'],
-    name='Payment Modes',
-    mode='lines+markers',
-    line=dict(color='red'),
-    yaxis='y2'
+fig_order.add_trace(go.Bar(
+    x=order_cat_churn[order_cat_churn['Churn'] == 1]['PreferedOrderCat'],
+    y=order_cat_churn[order_cat_churn['Churn'] == 1]['Count'],
+    name='Churned',
+    marker_color='blue'
 ))
 
-# Step 3: Layout for dual axes
-fig.update_layout(
-    title='Popular Order Categories vs Payment Mode Preferences',
-    xaxis=dict(title='Category'),
-    yaxis=dict(title='Number of Orders (Bar)', side='left'),
-    yaxis2=dict(title='Payment Preferences (Line)', overlaying='y', side='right'),
-    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-    height=500, width=800,
+fig_order.update_layout(
+    title='Order Categories by Churn Status',
+    xaxis_title='Order Category',
+    yaxis_title='Number of Orders',
+    barmode='group',
+    height=500,
     margin=dict(t=50, b=40, l=40, r=40)
 )
 
-# Step 4: Streamlit display
-st.plotly_chart(fig, use_container_width=True)
-# st.caption("🔹 Bar chart shows product categories; line chart overlays payment mode preferences.")
-# st.caption("🔹 Laptops & Mobile Accessories are the most popular, while Grocery is the least.")
-# st.caption("🔹 Most users prefer Debit Cards, followed by Credit Cards. COD is rarely used.")
-################################
-churned = ecom_data[ecom_data["Churn"] == 1]
+# Step 4: Plot double line chart for Payment Modes
+fig_payment = go.Figure()
 
-# # 2. Preferred Payment Mode
-# fig2 = px.pie(churned, names="PreferredPaymentMode", 
-#               color_discrete_sequence=px.colors.sequential.Reds)
-# fig2.update_layout(title="Payment Methods Used by Churned Users", width=600, height=600)
+fig_payment.add_trace(go.Scatter(
+    x=payment_mode_churn[payment_mode_churn['Churn'] == 0]['PreferredPaymentMode'],
+    y=payment_mode_churn[payment_mode_churn['Churn'] == 0]['Count'],
+    mode='lines+markers',
+    name='Non-Churned',
+    line=dict(color='orange')
+))
 
-# # 3. Marital Status
-# fig3 = px.pie(churned, names="MaritalStatus", 
-#               color_discrete_sequence=px.colors.sequential.Greens)
-# fig3.update_layout(title="Marital Status of Churned Users", width=600, height=600)
+fig_payment.add_trace(go.Scatter(
+    x=payment_mode_churn[payment_mode_churn['Churn'] == 1]['PreferredPaymentMode'],
+    y=payment_mode_churn[payment_mode_churn['Churn'] == 1]['Count'],
+    mode='lines+markers',
+    name='Churned',
+    line=dict(color='blue')
+))
 
-# 5. Number of Orders (OrderCount)
-# order_counts = churned['OrderCount'].value_counts().reset_index()
-# order_counts.columns = ['OrderCount', 'Count']
+fig_payment.update_layout(
+    title='Payment Modes by Churn Status',
+    xaxis_title='Payment Mode',
+    yaxis_title='Number of Users',
+    height=500,
+    margin=dict(t=50, b=40, l=40, r=40)
+)
 
-# fig5 = px.pie(order_counts, names='OrderCount', values='Count', 
-#               color_discrete_sequence=px.colors.sequential.Oranges)
-# fig5.update_layout(title="Orders Placed by Churned Users", width=600, height=600)
+# Step 5: Display charts side-by-side in Streamlit
+col1, col2 = st.columns(2)
 
-device_counts = churned['PreferredLoginDevice'].value_counts().reset_index()
-device_counts.columns = ['Category', 'Count']
+with col1:
+    st.plotly_chart(fig_order, use_container_width=True)
 
-city_counts = churned['CityTier'].value_counts().reset_index()
-city_counts.columns = ['Category', 'Count']
+with col2:
+    st.plotly_chart(fig_payment, use_container_width=True)
+##############################
 
-satisfaction_counts = churned['SatisfactionScore'].value_counts().reset_index()
-satisfaction_counts.columns = ['Category', 'Count']
+# Map churn for readability
+ecom_data['ChurnLabel'] = ecom_data['Churn'].map({0: 'Not Churned', 1: 'Churned'})
 
-# Normalize to percentage
-device_counts['Type'] = 'PreferredLoginDevice'
-city_counts['Type'] = 'CityTier'
-satisfaction_counts['Type'] = 'SatisfactionScore'
+# ---- 1. CityTier ----
+city_group = ecom_data.groupby(['CityTier', 'ChurnLabel']).size().reset_index(name='Count')
 
-combined = pd.concat([device_counts, city_counts, satisfaction_counts])
-combined['Percentage'] = (combined['Count'] / combined.groupby('Type')['Count'].transform('sum')) * 100
-
-# Plot
-fig = px.bar(combined, x='Category', y='Percentage', color='Type', 
-             barmode='group', title="Distribution of Churned Users by Category",
-             height=500)
-
-fig.update_layout(xaxis_title="Category", yaxis_title="Percentage (%)")
-
-st.plotly_chart(fig, use_container_width=True)
-
-
+fig_city = px.bar(
+    city_group,
+    x='CityTier',
+    y='Count',
+    color='ChurnLabel',
+    barmode='group',
+    title='Churned vs Non-Churned by City Tier',
+    color_discrete_map={
+    'Not Churned': '#ffa500',  # Green
+    'Churned': '#347fbf'   # Red
+}
+)
+fig_city.update_layout(xaxis_title='City Tier', yaxis_title='User Count')
 
 
-import streamlit as st
-import pandas as pd
+# ---- 2. SatisfactionScore ----
+score_group = ecom_data.groupby(['SatisfactionScore', 'ChurnLabel']).size().reset_index(name='Count')
+score_group['Percent'] = score_group['Count'] / score_group.groupby('SatisfactionScore')['Count'].transform('sum') * 100
+
+fig_stacked = px.bar(
+    score_group,
+    x='SatisfactionScore',
+    y='Percent',
+    color='ChurnLabel',
+    barmode='stack',
+    title='Churn Rate by Satisfaction Score',
+    color_discrete_map={
+    'Not Churned': '#ffa500',  # Green
+    'Churned': '#347fbf'   # Red
+}
+)
+
+fig_stacked.update_layout(
+    xaxis_title='Satisfaction Score',
+    yaxis_title='Percentage (%)'
+)
+
+
+col1, col2 = st.columns(2)
+with col1:
+    st.plotly_chart(fig_stacked, use_container_width=True)
+
+with col2:
+    st.plotly_chart(fig_city, use_container_width=True)
+
+##########################################
 
 # Your feature scores as a list of tuples (feature, score)
 features = [
@@ -312,42 +290,6 @@ selected_features = [
     'preferred_login_device_Mobile Phone'
 ]
 
-# UI
-# st.title("🛍️ Ecommerce Churn Prediction Dashboard")
-# set_name = st.selectbox("Select a customer set", list(all_sets.keys()))
-
-# if st.button("Predict Churn for Selected Set"):
-#     customers = all_sets[set_name]
-
-#     for idx, customer in enumerate(customers):
-#         input_data = [int(customer[feature]) if isinstance(customer[feature], bool) else customer[feature]
-#                       for feature in selected_features]
-
-#         try:
-#             response = requests.post(API_URL, json={"features": input_data})
-#             result = response.json()
-#         except Exception as e:
-#             st.error(f"Failed to reach API: {e}")
-#             continue
-
-#         st.subheader(f"Customer #{idx + 1}")
-#         col1, col2 = st.columns(2)
-
-#         with col1:
-#             customer_data = {k: v for k, v in customer.items() if k != "churn"}
-#             df = pd.DataFrame(customer_data.items(), columns=["Feature", "Value"])
-#             st.table(df)
-
-#         with col2:
-#             actual = "Churn" if customer.get("churn") == 1 else "Not Churn"
-#             predicted = result.get("predicted_class", "Error")
-#             prob = result.get("churn_probability", "-")
-
-#             st.markdown(f"**Actual:** {actual}")
-#             st.markdown(f"**Predicted:** {predicted}")
-#             st.markdown(f"**Churn Probability:** `{prob}`")
-
-#         st.markdown("---")
 st.title("🛍️ Ecommerce Churn Prediction Dashboard")
 
 set_name = st.selectbox("Select a customer set", list(all_sets.keys()))
