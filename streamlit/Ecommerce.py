@@ -6,7 +6,7 @@ import requests
 import plotly.graph_objects as go
 import json
 st.set_page_config(page_title="E-commerce Churn Predictor", layout="wide")
-ecom_data = pd.read_excel("E Commerce Dataset.xlsx",sheet_name='E Comm')
+ecom_data = pd.read_excel("data.xlsx",sheet_name='E Comm')
 
 st.title("🛒 E-commerce Customer Churn Predictor")
 st.markdown("""Welcome to the **E-commerce Churn Predictor App**!
