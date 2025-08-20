@@ -263,7 +263,7 @@ with open("sample_customers.json", "r") as f:
     all_sets = json.load(f)
 
 # Define FastAPI prediction endpoint
-API_URL = "http://127.0.0.1:8000/predict"
+API_URL = "https://ecommerce-churn.onrender.com/predict"
 
 # Define feature order used by the model
 selected_features = [
