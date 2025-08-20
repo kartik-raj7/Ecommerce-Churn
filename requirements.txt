@@ -1,7 +1,5 @@
-fastapi
-uvicorn
-scikit-learn
-joblib
-pydantic
-xgboost
-numpy
+streamlit
+pandas
+matplotlib
+plotly
+requests
